@@ -3,31 +3,28 @@ import sys
 
 pygame.init()
 
-# 窗口设置
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("箭途")
 clock = pygame.time.Clock()
 
-# 颜色
 BG_COLOR = (30, 30, 30)
 GRID_COLOR = (80, 80, 80)
 ARROW_COLOR = (255, 200, 0)
 TEXT_COLOR = (255, 255, 255)
 SELECT_COLOR = (0, 200, 100)
+ERROR_COLOR = (255, 80, 80)
 
-# 字体
 FONT = pygame.font.SysFont("microsoftyahei", 48)
+UI_FONT = pygame.font.SysFont("microsoftyahei", 28)
 
-# 棋盘参数
 ROWS, COLS = 5, 5
 CELL_SIZE = 80
 BOARD_WIDTH = COLS * CELL_SIZE
 BOARD_HEIGHT = ROWS * CELL_SIZE
 BOARD_X = (WIDTH - BOARD_WIDTH) // 2
-BOARD_Y = (HEIGHT - BOARD_HEIGHT) // 2
+BOARD_Y = (HEIGHT - BOARD_HEIGHT) // 2 + 30
 
-# 方向
 UP = "up"
 DOWN = "down"
 LEFT = "left"
@@ -40,7 +37,6 @@ ARROW_SYMBOL = {
     RIGHT: "→",
 }
 
-# 测试用棋盘
 board = [
     [RIGHT, None, None, UP, None],
     [None, DOWN, None, None, LEFT],
@@ -49,8 +45,17 @@ board = [
     [None, LEFT, None, None, RIGHT],
 ]
 
-# 当前选中的格子
-selected = None  # (row, col) 或 None
+selected = None
+mistakes = 0
+MAX_MISTAKES = 3
+
+# 碰撞动画状态
+shake_cell = None       # (row, col)
+shake_timer = 0         # 剩余帧数
+
+
+def count_arrows():
+    return sum(1 for r in range(ROWS) for c in range(COLS) if board[r][c] is not None)
 
 
 def draw_grid():
@@ -72,7 +77,14 @@ def draw_arrow(row, col, direction):
     cx = BOARD_X + col * CELL_SIZE + CELL_SIZE // 2
     cy = BOARD_Y + row * CELL_SIZE + CELL_SIZE // 2
 
-    # 如果被选中，画一个高亮框
+    # 碰撞时左右晃动
+    if shake_cell == (row, col):
+        cx += 6 if (shake_timer // 3) % 2 == 0 else -6
+
+    color = ARROW_COLOR
+    if shake_cell == (row, col):
+        color = ERROR_COLOR
+
     if selected == (row, col):
         rect = pygame.Rect(
             BOARD_X + col * CELL_SIZE + 4,
@@ -82,7 +94,7 @@ def draw_arrow(row, col, direction):
         )
         pygame.draw.rect(screen, SELECT_COLOR, rect, 3)
 
-    text = FONT.render(symbol, True, ARROW_COLOR)
+    text = FONT.render(symbol, True, color)
     rect = text.get_rect(center=(cx, cy))
     screen.blit(text, rect)
 
@@ -94,37 +106,19 @@ def draw_board():
             if board[r][c] is not None:
                 draw_arrow(r, c, board[r][c])
 
-def can_fly_out(board, row, col, direction):
-    """判断 (row, col) 处的箭头能否飞出棋盘"""
-    if direction == UP:
-        for r in range(row - 1, -1, -1):
-            if board[r][col] is not None:
-                return False
-        return True
 
-    if direction == DOWN:
-        for r in range(row + 1, ROWS):
-            if board[r][col] is not None:
-                return False
-        return True
+def draw_ui():
+    level_text = UI_FONT.render("关卡 1", True, TEXT_COLOR)
+    arrow_text = UI_FONT.render(f"剩余箭头：{count_arrows()}", True, TEXT_COLOR)
+    mistake_text = UI_FONT.render(
+        f"失误：{mistakes} / {MAX_MISTAKES}", True, TEXT_COLOR)
 
-    if direction == LEFT:
-        for c in range(col - 1, -1, -1):
-            if board[row][c] is not None:
-                return False
-        return True
-
-    if direction == RIGHT:
-        for c in range(col + 1, COLS):
-            if board[row][c] is not None:
-                return False
-        return True
-
-    return False
+    screen.blit(level_text, (30, 20))
+    screen.blit(arrow_text, (30, 55))
+    screen.blit(mistake_text, (WIDTH - 220, 20))
 
 
 def pos_to_cell(mx, my):
-    """把鼠标坐标转成 (row, col)，不在棋盘内返回 None"""
     if not (BOARD_X <= mx < BOARD_X + BOARD_WIDTH):
         return None
     if not (BOARD_Y <= my < BOARD_Y + BOARD_HEIGHT):
@@ -134,7 +128,30 @@ def pos_to_cell(mx, my):
     return row, col
 
 
-# 主循环
+def can_fly_out(board, row, col, direction):
+    if direction == UP:
+        for r in range(row - 1, -1, -1):
+            if board[r][col] is not None:
+                return False
+        return True
+    if direction == DOWN:
+        for r in range(row + 1, ROWS):
+            if board[r][col] is not None:
+                return False
+        return True
+    if direction == LEFT:
+        for c in range(col - 1, -1, -1):
+            if board[row][c] is not None:
+                return False
+        return True
+    if direction == RIGHT:
+        for c in range(col + 1, COLS):
+            if board[row][c] is not None:
+                return False
+        return True
+    return False
+
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -149,13 +166,23 @@ while True:
                     selected = (r, c)
                     direction = board[r][c]
                     if can_fly_out(board, r, c, direction):
-                        print(f"({r},{c}) 方向 {direction} 可以飞出")
+                        board[r][c] = None
+                        selected = None
                     else:
-                        print(f"({r},{c}) 方向 {direction} 被阻挡")
+                        mistakes += 1
+                        shake_cell = (r, c)
+                        shake_timer = 20
                 else:
                     selected = None
 
+    # 更新碰撞动画
+    if shake_timer > 0:
+        shake_timer -= 1
+        if shake_timer == 0:
+            shake_cell = None
+
     screen.fill(BG_COLOR)
     draw_board()
+    draw_ui()
     pygame.display.flip()
     clock.tick(60)

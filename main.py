@@ -20,6 +20,7 @@ BTN_HOVER = (90, 90, 90)
 FONT = pygame.font.SysFont("microsoftyahei", 48)
 UI_FONT = pygame.font.SysFont("microsoftyahei", 28)
 BIG_FONT = pygame.font.SysFont("microsoftyahei", 64)
+TITLE_FONT = pygame.font.SysFont("microsoftyahei", 96)
 
 ROWS, COLS = 5, 5
 CELL_SIZE = 80
@@ -40,7 +41,6 @@ ARROW_SYMBOL = {
     RIGHT: "→",
 }
 
-# 关卡数据：每个关卡一个二维数组
 LEVELS = [
     [
         [RIGHT, None, None, UP, None],
@@ -67,22 +67,24 @@ LEVELS = [
 
 MAX_MISTAKES = 3
 
-# 游戏状态
+STATE_MENU = "menu"
 STATE_PLAYING = "playing"
 STATE_WIN = "win"
 STATE_LOSE = "lose"
 
+state = STATE_MENU
 level_index = 0
 board = [row[:] for row in LEVELS[level_index]]
 selected = None
 mistakes = 0
-state = STATE_PLAYING
 
 shake_cell = None
 shake_timer = 0
 
-# 重新开始按钮
+START_BTN = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 40, 200, 60)
 RESTART_BTN = pygame.Rect(WIDTH - 160, HEIGHT - 60, 130, 40)
+NEXT_BTN = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 60)
+MENU_BTN = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 140, 200, 60)
 
 
 def load_level(index):
@@ -121,9 +123,7 @@ def draw_arrow(row, col, direction):
     if shake_cell == (row, col):
         cx += 6 if (shake_timer // 3) % 2 == 0 else -6
 
-    color = ARROW_COLOR
-    if shake_cell == (row, col):
-        color = ERROR_COLOR
+    color = ERROR_COLOR if shake_cell == (row, col) else ARROW_COLOR
 
     if selected == (row, col):
         rect = pygame.Rect(
@@ -147,6 +147,27 @@ def draw_board():
                 draw_arrow(r, c, board[r][c])
 
 
+def draw_button(rect, text):
+    mouse_pos = pygame.mouse.get_pos()
+    color = BTN_HOVER if rect.collidepoint(mouse_pos) else BTN_COLOR
+    pygame.draw.rect(screen, color, rect, border_radius=8)
+    btn_text = UI_FONT.render(text, True, TEXT_COLOR)
+    btn_rect = btn_text.get_rect(center=rect.center)
+    screen.blit(btn_text, btn_rect)
+
+
+def draw_menu():
+    title = TITLE_FONT.render("箭途", True, ARROW_COLOR)
+    title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100))
+    screen.blit(title, title_rect)
+
+    sub = UI_FONT.render("点击箭头，让它飞出棋盘", True, TEXT_COLOR)
+    sub_rect = sub.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 10))
+    screen.blit(sub, sub_rect)
+
+    draw_button(START_BTN, "开始游戏")
+
+
 def draw_ui():
     level_text = UI_FONT.render(f"关卡 {level_index + 1}", True, TEXT_COLOR)
     arrow_text = UI_FONT.render(f"剩余箭头：{count_arrows()}", True, TEXT_COLOR)
@@ -157,27 +178,35 @@ def draw_ui():
     screen.blit(arrow_text, (30, 55))
     screen.blit(mistake_text, (WIDTH - 220, 20))
 
-    # 重新开始按钮
-    mouse_pos = pygame.mouse.get_pos()
-    color = BTN_HOVER if RESTART_BTN.collidepoint(mouse_pos) else BTN_COLOR
-    pygame.draw.rect(screen, color, RESTART_BTN, border_radius=8)
-    btn_text = UI_FONT.render("重新开始", True, TEXT_COLOR)
-    btn_rect = btn_text.get_rect(center=RESTART_BTN.center)
-    screen.blit(btn_text, btn_rect)
+    draw_button(RESTART_BTN, "重新开始")
 
 
-def draw_center_message(title, subtitle):
+def draw_overlay():
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     screen.blit(overlay, (0, 0))
 
-    title_text = BIG_FONT.render(title, True, TEXT_COLOR)
-    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 40))
-    screen.blit(title_text, title_rect)
 
-    sub_text = UI_FONT.render(subtitle, True, TEXT_COLOR)
-    sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40))
-    screen.blit(sub_text, sub_rect)
+def draw_win_screen():
+    draw_overlay()
+    if level_index < len(LEVELS) - 1:
+        title = BIG_FONT.render("通关！", True, TEXT_COLOR)
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+        screen.blit(title, title_rect)
+        draw_button(NEXT_BTN, "下一关")
+    else:
+        title = BIG_FONT.render("全部通关！", True, TEXT_COLOR)
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+        screen.blit(title, title_rect)
+        draw_button(NEXT_BTN, "重新开始")
+
+
+def draw_lose_screen():
+    draw_overlay()
+    title = BIG_FONT.render("失败", True, ERROR_COLOR)
+    title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+    screen.blit(title, title_rect)
+    draw_button(MENU_BTN, "重新开始本关")
 
 
 def pos_to_cell(mx, my):
@@ -223,27 +252,32 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
 
-            # 重新开始按钮
-            if RESTART_BTN.collidepoint(mx, my):
-                load_level(level_index)
-                continue
-
-            # 通关 / 失败状态下点击继续
-            if state == STATE_WIN:
-                if level_index < len(LEVELS) - 1:
-                    level_index += 1
-                    load_level(level_index)
-                else:
+            if state == STATE_MENU:
+                if START_BTN.collidepoint(mx, my):
                     level_index = 0
                     load_level(level_index)
                 continue
 
-            if state == STATE_LOSE:
-                load_level(level_index)
+            if state == STATE_WIN:
+                if NEXT_BTN.collidepoint(mx, my):
+                    if level_index < len(LEVELS) - 1:
+                        level_index += 1
+                        load_level(level_index)
+                    else:
+                        level_index = 0
+                        load_level(level_index)
                 continue
 
-            # 游戏中点击棋盘
+            if state == STATE_LOSE:
+                if MENU_BTN.collidepoint(mx, my):
+                    load_level(level_index)
+                continue
+
             if state == STATE_PLAYING:
+                if RESTART_BTN.collidepoint(mx, my):
+                    load_level(level_index)
+                    continue
+
                 cell = pos_to_cell(mx, my)
                 if cell is not None:
                     r, c = cell
@@ -270,16 +304,16 @@ while True:
             shake_cell = None
 
     screen.fill(BG_COLOR)
-    draw_board()
-    draw_ui()
 
-    if state == STATE_WIN:
-        if level_index < len(LEVELS) - 1:
-            draw_center_message("通关！", "点击进入下一关")
-        else:
-            draw_center_message("全部通关！", "点击重新开始")
-    elif state == STATE_LOSE:
-        draw_center_message("失败", "点击重新开始本关")
+    if state == STATE_MENU:
+        draw_menu()
+    else:
+        draw_board()
+        draw_ui()
+        if state == STATE_WIN:
+            draw_win_screen()
+        elif state == STATE_LOSE:
+            draw_lose_screen()
 
     pygame.display.flip()
     clock.tick(60)

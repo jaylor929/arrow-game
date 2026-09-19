@@ -22,7 +22,7 @@ UI_FONT = pygame.font.SysFont("microsoftyahei", 28)
 BIG_FONT = pygame.font.SysFont("microsoftyahei", 64)
 TITLE_FONT = pygame.font.SysFont("microsoftyahei", 96)
 
-ROWS, COLS = 5, 5
+ROWS, COLS = 7, 7
 CELL_SIZE = 80
 BOARD_WIDTH = COLS * CELL_SIZE
 BOARD_HEIGHT = ROWS * CELL_SIZE
@@ -42,26 +42,35 @@ ARROW_SYMBOL = {
 }
 
 LEVELS = [
+    # 第 1 关：7x7，10 个箭头，有阻挡
     [
-        [RIGHT, None, None, UP, None],
-        [None, DOWN, None, None, LEFT],
-        [None, None, RIGHT, None, None],
-        [UP, None, None, DOWN, None],
-        [None, LEFT, None, None, RIGHT],
+        [RIGHT, None, None, None, None, UP, None],
+        [None, None, None, DOWN, None, None, None],
+        [None, LEFT, None, None, None, None, None],
+        [None, None, None, None, RIGHT, None, None],
+        [None, None, UP, None, None, None, None],
+        [None, None, None, None, None, DOWN, None],
+        [None, LEFT, None, None, None, None, None],
     ],
+    # 第 2 关：7x7，13 个箭头，阻挡更多
     [
-        [RIGHT, None, UP, None, None],
-        [None, DOWN, None, None, LEFT],
-        [None, None, RIGHT, None, None],
-        [UP, None, None, DOWN, None],
-        [None, LEFT, None, None, RIGHT],
+        [RIGHT, None, None, UP, None, None, None],
+        [None, DOWN, None, None, None, LEFT, None],
+        [None, None, None, RIGHT, None, None, None],
+        [None, None, UP, None, None, None, DOWN],
+        [None, LEFT, None, None, DOWN, None, None],
+        [None, None, None, RIGHT, None, None, None],
+        [None, None, None, None, None, UP, None],
     ],
+    # 第 3 关：7x7，12 个箭头，可通关
     [
-        [RIGHT, None, None, None, UP],
-        [None, DOWN, None, LEFT, None],
-        [None, None, RIGHT, None, None],
-        [UP, None, None, DOWN, None],
-        [None, LEFT, None, None, RIGHT],
+        [RIGHT, None, None, None, UP, None, None],
+        [None, DOWN, None, None, None, LEFT, None],
+        [None, None, None, RIGHT, None, None, None],
+        [None, None, UP, None, None, None, DOWN],
+        [None, LEFT, None, None, DOWN, None, None],
+        [None, None, None, RIGHT, None, None, None],
+        [None, None, None, None, None, UP, None],
     ],
 ]
 

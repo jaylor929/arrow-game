@@ -14,8 +14,9 @@ BG_COLOR = (30, 30, 30)
 GRID_COLOR = (80, 80, 80)
 ARROW_COLOR = (255, 200, 0)
 TEXT_COLOR = (255, 255, 255)
+SELECT_COLOR = (0, 200, 100)
 
-# 字体：用系统字体，支持箭头符号
+# 字体
 FONT = pygame.font.SysFont("microsoftyahei", 48)
 
 # 棋盘参数
@@ -32,7 +33,6 @@ DOWN = "down"
 LEFT = "left"
 RIGHT = "right"
 
-# 方向对应符号
 ARROW_SYMBOL = {
     UP: "↑",
     DOWN: "↓",
@@ -49,9 +49,11 @@ board = [
     [None, LEFT, None, None, RIGHT],
 ]
 
+# 当前选中的格子
+selected = None  # (row, col) 或 None
+
 
 def draw_grid():
-    """画棋盘网格"""
     for r in range(ROWS + 1):
         y = BOARD_Y + r * CELL_SIZE
         pygame.draw.line(screen, GRID_COLOR,
@@ -63,25 +65,45 @@ def draw_grid():
 
 
 def draw_arrow(row, col, direction):
-    """在指定格子画一个符号箭头"""
     symbol = ARROW_SYMBOL.get(direction)
     if symbol is None:
         return
 
-    text = FONT.render(symbol, True, ARROW_COLOR)
     cx = BOARD_X + col * CELL_SIZE + CELL_SIZE // 2
     cy = BOARD_Y + row * CELL_SIZE + CELL_SIZE // 2
+
+    # 如果被选中，画一个高亮框
+    if selected == (row, col):
+        rect = pygame.Rect(
+            BOARD_X + col * CELL_SIZE + 4,
+            BOARD_Y + row * CELL_SIZE + 4,
+            CELL_SIZE - 8,
+            CELL_SIZE - 8,
+        )
+        pygame.draw.rect(screen, SELECT_COLOR, rect, 3)
+
+    text = FONT.render(symbol, True, ARROW_COLOR)
     rect = text.get_rect(center=(cx, cy))
     screen.blit(text, rect)
 
 
 def draw_board():
-    """画整个棋盘和箭头"""
     draw_grid()
     for r in range(ROWS):
         for c in range(COLS):
             if board[r][c] is not None:
                 draw_arrow(r, c, board[r][c])
+
+
+def pos_to_cell(mx, my):
+    """把鼠标坐标转成 (row, col)，不在棋盘内返回 None"""
+    if not (BOARD_X <= mx < BOARD_X + BOARD_WIDTH):
+        return None
+    if not (BOARD_Y <= my < BOARD_Y + BOARD_HEIGHT):
+        return None
+    col = (mx - BOARD_X) // CELL_SIZE
+    row = (my - BOARD_Y) // CELL_SIZE
+    return row, col
 
 
 # 主循环
@@ -90,6 +112,15 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            cell = pos_to_cell(*event.pos)
+            if cell is not None:
+                r, c = cell
+                if board[r][c] is not None:
+                    selected = (r, c)
+                else:
+                    selected = None
 
     screen.fill(BG_COLOR)
     draw_board()

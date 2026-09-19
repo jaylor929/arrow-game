@@ -94,6 +94,34 @@ def draw_board():
             if board[r][c] is not None:
                 draw_arrow(r, c, board[r][c])
 
+def can_fly_out(board, row, col, direction):
+    """判断 (row, col) 处的箭头能否飞出棋盘"""
+    if direction == UP:
+        for r in range(row - 1, -1, -1):
+            if board[r][col] is not None:
+                return False
+        return True
+
+    if direction == DOWN:
+        for r in range(row + 1, ROWS):
+            if board[r][col] is not None:
+                return False
+        return True
+
+    if direction == LEFT:
+        for c in range(col - 1, -1, -1):
+            if board[row][c] is not None:
+                return False
+        return True
+
+    if direction == RIGHT:
+        for c in range(col + 1, COLS):
+            if board[row][c] is not None:
+                return False
+        return True
+
+    return False
+
 
 def pos_to_cell(mx, my):
     """把鼠标坐标转成 (row, col)，不在棋盘内返回 None"""
@@ -119,6 +147,11 @@ while True:
                 r, c = cell
                 if board[r][c] is not None:
                     selected = (r, c)
+                    direction = board[r][c]
+                    if can_fly_out(board, r, c, direction):
+                        print(f"({r},{c}) 方向 {direction} 可以飞出")
+                    else:
+                        print(f"({r},{c}) 方向 {direction} 被阻挡")
                 else:
                     selected = None
 
